@@ -196,3 +196,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"""
+RUN IN TERMINAL:
+> python scripts/process-maf-data.py
+2024-11-20 11:10:42,709 - INFO - Analysis complete. Processed 4 MAF files.
+2024-11-20 11:10:42,709 - INFO - Analysis Summary:
+2024-11-20 11:10:42,709 - INFO - MMCID-26B: 535 variants processed
+2024-11-20 11:10:42,709 - INFO - MMCID-30B: 275 variants processed
+2024-11-20 11:10:42,709 - INFO - TCMK1-14B: 327 variants processed
+2024-11-20 11:10:42,709 - INFO - TMCK1-23B: 322 variants processed
+"""
