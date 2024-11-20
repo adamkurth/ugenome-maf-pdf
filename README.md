@@ -1,11 +1,30 @@
 # ugenome
 
+Directory structure for processing and analyzing genomic data.
+
+```bash 
+project_root/
+├── data/
+│   ├── maf/           # Put your .maf files here
+│   └── results/       # Output will be created here
+└── scripts/
+    ├── process_maf_data.py
+    └── generate_clinical_report.py
+```
+
 ## `scripts/`
 
 1. `process-maf-data.py` - Process MAF files and generate a summary report.
    
 2. `process-clinical-report.py` - Process clinical report and generate a summary report.
 
+```bash
+# Step 1: Process MAF files
+python scripts/process_maf_data.py
+
+# Step 2: Generate clinical reports
+python scripts/generate_clinical_report.py
+```
 
 ### `process-maf-data.py`
 

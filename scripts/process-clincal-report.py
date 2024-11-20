@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import pandas as pd
 import json
 from pathlib import Path
@@ -7,160 +8,162 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
-from reportlab.graphics.shapes import Drawing
-from reportlab.graphics.charts.barcharts import VerticalBarChart
-from reportlab.graphics.charts.piecharts import Pie
-import matplotlib.pyplot as plt
-import seaborn as sns
-import io
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, 
+                              TableStyle, PageBreak)
 
 class ClinicalReportGenerator:
     def __init__(self):
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO,
+                          format='%(asctime)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger(__name__)
         self.styles = getSampleStyleSheet()
         
-        # Custom styles
+        # Custom styles setup
+        self.setup_styles()
+
+    def setup_styles(self):
+        """Set up all custom styles for the report"""
         self.styles.add(ParagraphStyle(
-            name='CustomTitle',
+            name='ReportTitle',
             parent=self.styles['Heading1'],
-            fontSize=24,
-            spaceAfter=30,
-            textColor=colors.HexColor('#2C3E50')
+            fontSize=14,
+            spaceAfter=20,
+            textColor=colors.black
         ))
         
         self.styles.add(ParagraphStyle(
             name='SectionHeader',
             parent=self.styles['Heading2'],
-            fontSize=16,
-            spaceBefore=20,
-            spaceAfter=12,
-            textColor=colors.HexColor('#34495E')
+            fontSize=12,
+            spaceBefore=15,
+            spaceAfter=10,
+            textColor=colors.black
         ))
         
         self.styles.add(ParagraphStyle(
-            name='SubSection',
-            parent=self.styles['Heading3'],
-            fontSize=14,
-            spaceBefore=15,
-            spaceAfter=10,
-            textColor=colors.HexColor('#7F8C8D')
+            name='TableHeader',
+            parent=self.styles['Normal'],
+            fontSize=10,
+            textColor=colors.black,
+            alignment=1
         ))
 
-    def load_data(self, results_dir: Path) -> dict:
-        """Load analysis results and processed data"""
+    def load_processed_data(self, results_dir: Path, sample_name: str) -> dict:
+        """Load processed data for the given sample"""
+        processed_dir = results_dir / 'processed_data'
+        data = {}
+        
         try:
-            # Load complete analysis
-            with open(results_dir / 'complete_analysis.json', 'r') as f:
-                analysis_data = json.load(f)
+            # Load complete data
+            complete_file = processed_dir / f'{sample_name}_complete.csv'
+            if complete_file.exists():
+                self.logger.info(f"Loading complete data from {complete_file}")
+                data['complete'] = pd.read_csv(complete_file)
+            else:
+                self.logger.warning(f"Complete data file not found: {complete_file}")
             
-            # Load processed data files
-            processed_data = {}
-            processed_dir = results_dir / 'processed_data'
-            for file_path in processed_dir.glob('*.csv'):
-                sample_name = file_path.stem.split('_')[0]
-                if sample_name not in processed_data:
-                    processed_data[sample_name] = {}
-                variant_type = file_path.stem.split('_')[1]
-                processed_data[sample_name][variant_type] = pd.read_csv(file_path)
+            # Load variant-specific data
+            for variant_type in ['snp', 'del', 'ins']:
+                variant_file = processed_dir / f'{sample_name}_{variant_type}.csv'
+                if variant_file.exists():
+                    self.logger.info(f"Loading {variant_type} data from {variant_file}")
+                    data[variant_type] = pd.read_csv(variant_file)
+                else:
+                    self.logger.info(f"No {variant_type} data file found: {variant_file}")
             
-            return {'analysis': analysis_data, 'processed': processed_data}
+            if not data:
+                raise FileNotFoundError(f"No data files found for sample {sample_name}")
+                
+            return data
             
         except Exception as e:
-            self.logger.error(f"Error loading data: {str(e)}")
+            self.logger.error(f"Error loading data for {sample_name}: {str(e)}")
             raise
 
-    def create_variant_summary_table(self, sample_data: dict) -> Table:
-        """Create a summary table of variant counts"""
-        data = [['Variant Type', 'Count', 'Percentage']]
-        
-        variant_counts = sample_data['variant_metrics']['variant_counts']['by_type']
-        total = sum(variant_counts.values())
-        
-        for variant_type, count in variant_counts.items():
-            percentage = (count / total * 100) if total > 0 else 0
-            data.append([
-                variant_type,
-                str(count),
-                f"{percentage:.1f}%"
-            ])
-            
-        table = Table(data, colWidths=[2*inch, 1.5*inch, 1.5*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495E')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOX', (0, 0), (-1, -1), 2, colors.black),
-            ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
-        ]))
-        
-        return table
-
-    def create_impact_chart(self, sample_data: dict) -> Drawing:
-        """Create a pie chart of variant impact distribution"""
-        impact_data = sample_data['variant_metrics'].get('impact_distribution', {})
-        
-        drawing = Drawing(400, 200)
-        pie = Pie()
-        pie.x = 100
-        pie.y = 25
-        pie.width = 200
-        pie.height = 150
-        
-        # Prepare data
-        pie.data = list(impact_data.values())
-        pie.labels = list(impact_data.keys())
-        
-        # Style
-        pie.slices.strokeWidth = 0.5
-        colors_list = [colors.HexColor('#3498DB'), colors.HexColor('#E74C3C'),
-                      colors.HexColor('#2ECC71'), colors.HexColor('#F1C40F')]
-        for i, slice in enumerate(pie.slices):
-            slice.fillColor = colors_list[i % len(colors_list)]
-        
-        drawing.add(pie)
-        return drawing
-
-    def generate_gene_summary(self, sample_data: dict) -> list:
-        """Generate gene summary content"""
+    def create_header_section(self) -> list:
+        """Create the report header section"""
         elements = []
         
-        # Most mutated genes
-        elements.append(Paragraph('Most Frequently Mutated Genes', self.styles['SubSection']))
+        report_id = f"MAF-{datetime.now().strftime('%Y%m%d')}"
         
-        data = [['Gene', 'Mutation Count']]
-        most_mutated = list(sample_data['gene_summary']['most_mutated_genes'].items())[:10]
-        for gene, count in most_mutated:
-            data.append([gene, str(count)])
+        # Header table data
+        header_data = [
+            ['Report N°', report_id],
+            ['Date', datetime.now().strftime('%Y-%m-%d')]
+        ]
         
-        table = Table(data, colWidths=[2*inch, 1.5*inch])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495E')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        header_table = Table(header_data, colWidths=[2*inch, 4*inch])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
         ]))
         
-        elements.append(table)
+        elements.append(header_table)
         elements.append(Spacer(1, 20))
         
         return elements
 
-    def create_clinical_report(self, sample_name: str, data: dict, output_dir: Path):
-        """Generate complete clinical report"""
+    def create_patient_section(self, sample_name: str) -> list:
+        """Create the patient information section"""
+        elements = []
+        
+        patient_data = [
+            ['PATIENT', ''],
+            ['ID N°', 'XXXXX'],
+            ['Clinical Diagnosis', 'mCRC'],
+            ['Clinical Trial', '_____________']
+        ]
+        
+        patient_table = Table(patient_data, colWidths=[2*inch, 4*inch])
+        patient_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E8E8E8'))
+        ]))
+        
+        elements.append(patient_table)
+        elements.append(Spacer(1, 20))
+        
+        return elements
+
+    def create_variant_table(self, df: pd.DataFrame, variant_type: str) -> Table:
+        """Create a table for variants"""
+        # Select relevant columns
+        columns = ['Hugo_Symbol', 'Chromosome', 'Start_Position', 
+                  'Reference_Allele', 'Tumor_Seq_Allele2', 'HGVSp_Short']
+        
+        # Filter and prepare data
+        table_data = [columns]  # Header row
+        for _, row in df.iterrows():
+            table_data.append([str(row[col]) for col in columns])
+            
+        # Create table
+        table = Table(table_data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F5F5F5')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOX', (0,0), (-1,-1), 2, colors.black),
+            ('LINEBELOW', (0,0), (-1,0), 2, colors.black),
+        ]))
+        
+        return table
+
+    def generate_report(self, sample_name: str, data: dict, output_dir: Path):
+        """Generate the complete clinical report"""
         doc = SimpleDocTemplate(
-            output_dir / f"{sample_name}_clinical_report.pdf",
+            str(output_dir / f"{sample_name}_clinical_report.pdf"),
             pagesize=letter,
             rightMargin=72,
             leftMargin=72,
@@ -170,66 +173,98 @@ class ClinicalReportGenerator:
         
         elements = []
         
-        # Title
-        elements.append(Paragraph(f"Clinical Genomic Analysis Report", self.styles['CustomTitle']))
-        elements.append(Paragraph(f"Sample ID: {sample_name}", self.styles['SectionHeader']))
-        elements.append(Paragraph(f"Report Date: {datetime.now().strftime('%Y-%m-%d')}", self.styles['Normal']))
-        elements.append(Spacer(1, 30))
+        # Add header section
+        elements.extend(self.create_header_section())
         
-        # Sample Information
-        elements.append(Paragraph("Sample Overview", self.styles['SectionHeader']))
-        sample_data = data['analysis']['sample_analyses'][sample_name]
-        elements.append(Paragraph(
-            f"Total Variants: {sample_data['file_stats']['total_variants']}", 
-            self.styles['Normal']
-        ))
+        # Add patient section
+        elements.extend(self.create_patient_section(sample_name))
+        
+        # Add assay section
+        elements.append(Paragraph("ASSAY", self.styles['SectionHeader']))
+        
+        complete_df = data['complete']
+        total_variants = len(complete_df)
+        
+        assay_data = [
+            ['Genomic Target', 'WES', 'Sequencer', 'HiSeq2000'],
+            ['Target size', '33,000,000 bp', 'Run QC outcome:', 'Passed'],
+            ['Total Variants', str(total_variants), '', ''],
+            ['SNVs', str(len(data.get('snp', pd.DataFrame()))), 
+             'INDELs', str(len(data.get('del', pd.DataFrame())) + len(data.get('ins', pd.DataFrame())))]
+        ]
+        
+        assay_table = Table(assay_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+        assay_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ]))
+        
+        elements.append(assay_table)
         elements.append(Spacer(1, 20))
         
-        # Variant Summary
-        elements.append(Paragraph("Variant Summary", self.styles['SectionHeader']))
-        elements.append(self.create_variant_summary_table(sample_data))
+        # Add variant tables
+        elements.append(Paragraph("SNVs identified", self.styles['SectionHeader']))
+        if 'snp' in data:
+            elements.append(self.create_variant_table(data['snp'], 'SNVs'))
         elements.append(Spacer(1, 20))
         
-        # Impact Distribution
-        elements.append(Paragraph("Variant Impact Distribution", self.styles['SectionHeader']))
-        elements.append(self.create_impact_chart(sample_data))
-        elements.append(Spacer(1, 20))
-        
-        # Gene Analysis
-        elements.append(Paragraph("Gene Analysis", self.styles['SectionHeader']))
-        elements.extend(self.generate_gene_summary(sample_data))
-        
-        # Clinical Significance
-        if 'clinical_significance' in sample_data['variant_metrics']:
-            elements.append(PageBreak())
-            elements.append(Paragraph("Clinical Significance", self.styles['SectionHeader']))
-            clin_sig_data = sample_data['variant_metrics']['clinical_significance']
-            for significance, count in clin_sig_data.items():
-                elements.append(Paragraph(
-                    f"{significance}: {count} variants",
-                    self.styles['Normal']
-                ))
+        elements.append(Paragraph("INDELs identified", self.styles['SectionHeader']))
+        indels_df = pd.concat([data.get('del', pd.DataFrame()), 
+                             data.get('ins', pd.DataFrame())], 
+                            ignore_index=True)
+        if not indels_df.empty:
+            elements.append(self.create_variant_table(indels_df, 'INDELs'))
         
         # Build the PDF
         doc.build(elements)
+        self.logger.info(f"Generated clinical report for {sample_name}")
 
 def main():
-    # Setup
-    results_dir = Path('data/results')
-    output_dir = results_dir / 'reports'
-    output_dir.mkdir(exist_ok=True)
+    try:
+        # Setup paths
+        root = Path(__file__).resolve().parents[1]
+        results_dir = root / "data" / "results"
+        
+        # Ensure results directory exists
+        if not results_dir.exists():
+            raise FileNotFoundError(f"Results directory not found: {results_dir}")
+            
+        output_dir = results_dir / "reports"
+        output_dir.mkdir(exist_ok=True, parents=True)
+        
+        # Verify processed data directory exists
+        processed_dir = results_dir / "processed_data"
+        if not processed_dir.exists():
+            raise FileNotFoundError(f"Processed data directory not found: {processed_dir}")
+            
+        logging.info(f"Output directory created at: {output_dir}")
+    
+    except Exception as e:
+        logging.error(f"Error setting up directories: {str(e)}")
+        raise
     
     # Initialize report generator
     generator = ClinicalReportGenerator()
     
     try:
-        # Load data
-        data = generator.load_data(results_dir)
+        # Process each sample
+        samples = ["MMCID-26B", "MMCID-30B"]  # Add other samples as needed
         
-        # Generate report for each sample
-        for sample_name in data['analysis']['sample_analyses'].keys():
-            generator.create_clinical_report(sample_name, data, output_dir)
-            logging.info(f"Generated clinical report for {sample_name}")
+        for sample_name in samples:
+            # Load processed data
+            data = generator.load_processed_data(results_dir, sample_name)
+            if not data:
+                logging.warning(f"No processed data found for {sample_name}")
+                continue
+                
+            # Generate report
+            generator.generate_report(
+                sample_name=sample_name,
+                data=data,
+                output_dir=output_dir
+            )
             
     except Exception as e:
         logging.error(f"Error generating reports: {str(e)}")
