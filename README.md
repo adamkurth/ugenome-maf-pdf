@@ -1,6 +1,6 @@
-# ugenome
+# ugenome-maf-pdf
 
-Directory structure for processing and analyzing genomic data.
+Directory structure for processing and analyzing genomic data for a clinical report generation.
 
 ```bash 
 project_root/
