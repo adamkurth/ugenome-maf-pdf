@@ -5,12 +5,17 @@ import shutil
 from pathlib import Path
 import logging
 from datetime import datetime
+from typing import List
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+import seaborn as sns
+import numpy as np
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, 
-                              TableStyle, PageBreak)
+                              TableStyle, PageBreak, Image)
 
 class ClinicalReportGenerator:
     def __init__(self):
@@ -40,12 +45,65 @@ class ClinicalReportGenerator:
         ))
         
         self.styles.add(ParagraphStyle(
+            name='VisualizationCaption',
+            parent=self.styles['Normal'],
+            fontSize=10,
+            alignment=1,
+            spaceAfter=20,
+        ))
+
+        self.styles.add(ParagraphStyle(
             name='TableHeader',
             parent=self.styles['Normal'],
             fontSize=10,
             textColor=colors.black,
             alignment=1
         ))
+
+    def create_visualizations(self, data: pd.DataFrame, output_dir: Path):
+        """create and save all visualzations for the report"""
+        viz_dir = output_dir / 'visualizations'
+        viz_dir.mkdir(exist_ok=True)
+        viz_paths = {}
+
+        # create mutation signature plot if data available
+        if 'mutation_signature' in data:
+            sig_path = viz_dir / 'mutation_signature.pdf'
+            self.viz_generator.create_mutation_signature_plot(
+                data['mutation_signature']['percentages'],
+                data['mutation_signature']['names'],
+                data['mutation_signature']['colors'],
+                f"{data['sample_name']} Mutational Signature",
+                sig_path
+            )
+            viz_paths['mutation_signature'] = sig_path
+            
+        # Create MAF summary plots if data available
+        if all(k in data for k in ['sample_summary', 'gene_summary', 'variant_classification']):
+            maf_path = viz_dir / 'maf_summary.pdf'
+            self.viz_generator.create_maf_summary_plots(
+                data['sample_summary'],
+                data['gene_summary'],
+                data['variant_classification'],
+                maf_path
+            )
+            viz_paths['maf_summary'] = maf_path
+            
+        return viz_paths
+
+    def add_visualization_section(self, elements, viz_paths):
+        """Add visualization section to report"""
+        elements.append(Paragraph("Visualizations", self.styles['SectionHeader']))
+        
+        for viz_type, path in viz_paths.items():
+            img = Image(str(path), width=6*inch, height=4*inch)
+            elements.append(img)
+            elements.append(Paragraph(
+                f"{viz_type.replace('_', ' ').title()} Visualization",
+                self.styles['VisualizationCaption']
+            ))
+            elements.append(Spacer(1, 20))
+
 
     def analyze_processed_data(self, processed_dir: Path) -> dict:
         """Analyze all processed data files"""
@@ -252,7 +310,11 @@ class ClinicalReportGenerator:
         
         # Add overall analysis summary
         elements.extend(self.create_summary_section(analysis_data))
-        
+
+        # Create visualizations        
+        viz_paths = self.create_visualizations(data, output_dir)
+        self.add_visualization_section(elements, viz_paths)
+
         # Add variant tables (top 5 only)
         elements.append(Paragraph("Top 5 SNVs", self.styles['SectionHeader']))
         if 'snp' in data:
@@ -277,6 +339,56 @@ class ClinicalReportGenerator:
         doc.build(elements)
         self.logger.info(f"Generated clinical report for {sample_name}")
 
+class VisalizationGenerator:
+    """Class to handle generation of visuals for the report"""
+    def __init__(self) -> None:
+        self.logger = logging.getLogger(__name__)
+
+    def create_mutation_signature_plot(self, percentages: List[float], names: List[str], colors: List[str], title: str, output_path: str) -> str:
+        """Create mutation signature bar plot"""
+        plt.figure(figsize=(10, 5))
+        plt.bar(range(len(percentages)), percentages, color=colors)
+        plt.xticks(range(len(percentages)), names, rotation=90, fontsize=2)
+        plt.ylabel("% of base substitutions")
+        plt.title(title)
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+        return output_path
+
+    def create_maf_summary_plots(self, sample_summary: pd.DataFrame, gene_summary: pd.DataFrame, variant_classification: pd.DataFrame, output_path: str):
+        """Create MAF summary plots"""
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        
+        # Plot 1: Variants per Sample
+        sns.barplot(x='Tumor_Sample_Barcode', y='Mutation_Count', 
+                   data=sample_summary, ax=axes[0, 0], palette='viridis')
+        axes[0, 0].set_title('Number of Variants per Sample')
+        axes[0, 0].tick_params(axis='x', rotation=90)
+        
+        # Plot 2: Variant Classification
+        sns.barplot(x='Variant_Classification', y='Count', 
+                   data=variant_classification, ax=axes[0, 1], palette='coolwarm')
+        axes[0, 1].set_title('Variant Classification Summary')
+        axes[0, 1].tick_params(axis='x', rotation=45)
+        
+        # Plot 3: Top Mutated Genes
+        top_genes = gene_summary.nlargest(10, 'Mutation_Count')
+        sns.barplot(y='Hugo_Symbol', x='Mutation_Count', 
+                   data=top_genes, ax=axes[1, 0], palette='plasma')
+        axes[1, 0].set_title('Top 10 Mutated Genes')
+        
+        # Plot 4: Mutation Counts Box Plot
+        sns.boxplot(x='Variant_Classification', y='Mutation_Count', 
+                   data=sample_summary, ax=axes[1, 1], palette='coolwarm')
+        axes[1, 1].set_title('Mutation Counts Distribution')
+        axes[1, 1].tick_params(axis='x', rotation=45)
+        
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+        return output_path
+
 def main():
     try:
         # Setup paths
@@ -285,7 +397,7 @@ def main():
         
         if not results_dir.exists():
             raise FileNotFoundError(f"Results directory not found: {results_dir}")
-            
+        
         output_dir = results_dir / "reports"
         output_dir.mkdir(exist_ok=True, parents=True)
         
@@ -305,6 +417,8 @@ def main():
         for sample_name in samples:
             # Load processed data
             data = generator.load_processed_data(results_dir, sample_name)
+            analysis_data = generator.analyze_processed_data(results_dir / 'processed_data')
+            
             if not data:
                 logging.warning(f"No processed data found for {sample_name}")
                 continue

@@ -1,0 +1,84 @@
+{
+    "sample_name": "TMCK1-23B",
+    "basic_metrics": {
+        "total_variants": 322,
+        "variant_types": {
+            "SNP": 275,
+            "DEL": 35,
+            "INS": 10,
+            "DNP": 1,
+            "TNP": 1
+        },
+        "by_chromosome": {
+            "2": 33,
+            "X": 22,
+            "11": 22,
+            "15": 22,
+            "4": 21,
+            "5": 20,
+            "7": 19,
+            "1": 19,
+            "8": 16,
+            "6": 15,
+            "12": 14,
+            "19": 14,
+            "14": 13,
+            "3": 12,
+            "18": 11,
+            "10": 11,
+            "17": 10,
+            "9": 10,
+            "16": 9,
+            "13": 6,
+            "MT": 3
+        },
+        "variant_classification": {
+            "Intron": 115,
+            "Missense_Mutation": 86,
+            "Silent": 29,
+            "IGR": 25,
+            "3'Flank": 11,
+            "RNA": 10,
+            "5'Flank": 10,
+            "Targeted_Region": 9,
+            "5'UTR": 7,
+            "3'UTR": 5,
+            "Nonsense_Mutation": 4,
+            "Frame_Shift_Ins": 4,
+            "Splice_Region": 3,
+            "Frame_Shift_Del": 2,
+            "In_Frame_Del": 1,
+            "Splice_Site": 1
+        },
+        "vaf_stats": {
+            "mean": 0.2669714405301754,
+            "median": 0.26141214070943464,
+            "std": 0.1641484734968526
+        }
+    },
+    "gene_metrics": {
+        "genes_mutated": 296,
+        "top_mutated_genes": {
+            "Unknown": 23,
+            "Nckap1": 2,
+            "Galnt14": 2,
+            "Slc15a2": 2,
+            "Plxnb3": 2,
+            "Aadacl4fm1": 1,
+            "Plb1": 1,
+            "Ccnl2": 1,
+            "Prdm16": 1,
+            "Chd5": 1,
+            "Zfp984": 1,
+            "Inpp5b": 1,
+            "Csmd2": 1,
+            "Gm1043": 1,
+            "4921539E11Rik": 1,
+            "Alg6": 1,
+            "Focad": 1,
+            "Frmd3": 1,
+            "Gm11232": 1,
+            "Nsd2": 1
+        },
+        "gene_variant_types": {
+            

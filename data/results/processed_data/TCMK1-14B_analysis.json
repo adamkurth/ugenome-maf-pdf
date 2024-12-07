@@ -1,0 +1,83 @@
+{
+    "sample_name": "TCMK1-14B",
+    "basic_metrics": {
+        "total_variants": 327,
+        "variant_types": {
+            "SNP": 272,
+            "DEL": 42,
+            "INS": 11,
+            "DNP": 2
+        },
+        "by_chromosome": {
+            "2": 36,
+            "10": 24,
+            "11": 24,
+            "X": 23,
+            "7": 23,
+            "1": 20,
+            "5": 19,
+            "4": 17,
+            "6": 16,
+            "16": 14,
+            "15": 13,
+            "3": 13,
+            "8": 13,
+            "17": 12,
+            "19": 12,
+            "9": 11,
+            "14": 9,
+            "13": 9,
+            "18": 8,
+            "12": 8,
+            "MT": 2,
+            "MU069435.1": 1
+        },
+        "variant_classification": {
+            "Intron": 111,
+            "Missense_Mutation": 86,
+            "Silent": 32,
+            "IGR": 23,
+            "RNA": 13,
+            "5'Flank": 12,
+            "Targeted_Region": 11,
+            "3'Flank": 11,
+            "3'UTR": 6,
+            "5'UTR": 6,
+            "Splice_Region": 5,
+            "Nonsense_Mutation": 4,
+            "Frame_Shift_Ins": 4,
+            "Frame_Shift_Del": 2,
+            "In_Frame_Del": 1
+        },
+        "vaf_stats": {
+            "mean": 0.25866492337933195,
+            "median": 0.2613981762917933,
+            "std": 0.14712477116367756
+        }
+    },
+    "gene_metrics": {
+        "genes_mutated": 304,
+        "top_mutated_genes": {
+            "Unknown": 20,
+            "Nckap1": 2,
+            "Gm11639": 2,
+            "Platr16": 2,
+            "Krt10": 2,
+            "Ncoa2": 1,
+            "Nsd2": 1,
+            "Tecrl": 1,
+            "Spata18": 1,
+            "Guf1": 1,
+            "Gm7854": 1,
+            "Cfap74": 1,
+            "Gm7646": 1,
+            "Chd5": 1,
+            "Gm13141": 1,
+            "ENSMUSR00000844632": 1,
+            "Adgrb2": 1,
+            "Csmd2": 1,
+            "4921539E11Rik": 1,
+            "Ythdc1": 1
+        },
+        "gene_variant_types": {
+            

@@ -1,0 +1,86 @@
+{
+    "sample_name": "MMCID-30B",
+    "basic_metrics": {
+        "total_variants": 275,
+        "variant_types": {
+            "SNP": 229,
+            "DEL": 31,
+            "INS": 8,
+            "DNP": 7
+        },
+        "by_chromosome": {
+            "7": 33,
+            "5": 29,
+            "1": 22,
+            "2": 22,
+            "17": 20,
+            "3": 17,
+            "6": 16,
+            "9": 15,
+            "4": 15,
+            "11": 14,
+            "13": 9,
+            "16": 9,
+            "12": 8,
+            "8": 8,
+            "15": 8,
+            "10": 8,
+            "19": 6,
+            "18": 5,
+            "14": 4,
+            "X": 2,
+            "MU069435.1": 2,
+            "MT": 1,
+            "Y": 1,
+            "JH584304.1": 1
+        },
+        "variant_classification": {
+            "Intron": 143,
+            "Missense_Mutation": 33,
+            "IGR": 30,
+            "5'Flank": 14,
+            "Silent": 11,
+            "3'Flank": 10,
+            "5'UTR": 8,
+            "RNA": 8,
+            "Targeted_Region": 5,
+            "3'UTR": 4,
+            "Splice_Region": 2,
+            "Splice_Site": 2,
+            "Nonsense_Mutation": 2,
+            "In_Frame_Del": 1,
+            "Frame_Shift_Ins": 1,
+            "Frame_Shift_Del": 1
+        },
+        "vaf_stats": {
+            "mean": 0.24814875825860652,
+            "median": 0.241635687732342,
+            "std": 0.20960179956574956
+        }
+    },
+    "gene_metrics": {
+        "genes_mutated": 238,
+        "top_mutated_genes": {
+            "Unknown": 24,
+            "Mroh2a": 3,
+            "ENSMUSR00000878820": 2,
+            "Ltbp4": 2,
+            "Spata9": 2,
+            "Actn4": 2,
+            "ENSMUSR00000791548": 2,
+            "Ech1": 2,
+            "N4bp2": 2,
+            "Gm14278": 2,
+            "Tex101": 2,
+            "Ccdc18": 2,
+            "Lmcd1": 2,
+            "Tfap4": 2,
+            "Ung": 1,
+            "Gak": 1,
+            "Fbrsl1": 1,
+            "Miat": 1,
+            "Mtf2": 1,
+            "Hps4": 1
+        },
+        "gene_variant_types": {
+            
