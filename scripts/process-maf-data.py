@@ -342,86 +342,222 @@ class MAFSummaryGenerator:
             return False
 
 class MAFVisualizer:
-    """Generate visualizations from MAF analysis results"""
+    """Generate enhanced visualizations from MAF analysis results"""
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        # Set style parameters
+        # plt.style.use('seaborn-v0_8-darkgrid')
+        sns.set_theme(style="whitegrid")
+        self.colors = ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6']
+        
+    def _setup_figure_style(self, fig, ax):
+        """Apply consistent styling to figures"""
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(axis='y', linestyle='--', alpha=0.2, color='gray')
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('#f8f9fa')
+        for spine in ax.spines.values():
+            spine.set_color('#cccccc')
+
+    def _convert_to_png(self, output_file: str) -> str:
+        """Convert file path to PNG"""
+        return str(Path(output_file).with_suffix('.png'))
+
+class MAFVisualizer:
+    """Generate enhanced visualizations from MAF analysis results"""
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        # Set style parameters
+        sns.set_theme(style="whitegrid")
+        self.colors = ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6']
+        
+    def _setup_figure_style(self, fig, ax):
+        """Apply consistent styling to figures"""
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(axis='y', linestyle='--', alpha=0.2, color='gray')
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('#f8f9fa')
+        for spine in ax.spines.values():
+            spine.set_color('#cccccc')
+            
+    def _convert_to_png(self, output_file: str) -> str:
+        """Convert file path to PNG"""
+        return str(Path(output_file).with_suffix('.png'))
 
     def plot_mutation_signature(self, signature_data: Dict, output_file: str):
-        """Plot mutation signature"""
+        """Create enhanced mutation signature visualization with base substitutions"""
         try:
             if not signature_data:
                 return
                 
-            plt.figure(figsize=(15, 8))
+            # Convert output_file to string and handle extension
+            output_file = str(output_file)
+            png_output = output_file.replace('.pdf', '.png') if '.pdf' in output_file else output_file
+                
+            # Extract data and prepare for plotting
+            percentages = np.array(signature_data['percentages'])
+            contexts = signature_data['contexts']
             
-            x = range(len(signature_data['percentages']))
-            plt.bar(x, signature_data['percentages'], 
-                   color=signature_data['colors'],
-                   width=0.8)
+            # Create mapping of substitution types to colors
+            color_mapping = {
+                'C>A': '#87CEEB',  # Sky blue
+                'C>G': '#2F4F4F',  # Dark slate gray  
+                'C>T': '#CD5C5C',  # Indian red
+                'T>A': '#808080',  # Gray
+                'T>C': '#228B22',  # Forest green
+                'T>G': '#FF69B4'   # Hot pink
+            }
+
+            # Group data by context
+            data = {}
+            for i, ctx in enumerate(contexts):
+                full_context = ctx  # Keep full trinucleotide context
+                sub_type = ctx.split('[')[1].split(']')[0]
+                if sub_type not in data:
+                    data[sub_type] = {'contexts': [], 'percentages': [], 'color': color_mapping[sub_type]}
+                data[sub_type]['contexts'].append(full_context)
+                data[sub_type]['percentages'].append(percentages[i])
+
+            # Create figure
+            plt.figure(figsize=(15, 8), dpi=300)
             
-            plt.xticks(x, signature_data['contexts'],
-                      rotation=90, fontsize=6, ha='center')
-            plt.ylabel("% of base substitutions")
-            plt.title("Mutation Signature")
+            # Plot bars for each substitution type
+            x_pos = 0
+            xticks_pos = []
+            xticks_labels = []
             
+            for sub_type, sub_data in data.items():
+                positions = range(x_pos, x_pos + len(sub_data['contexts']))
+                plt.bar(positions, sub_data['percentages'], 
+                    color=sub_data['color'], 
+                    alpha=0.8,
+                    width=0.8)
+                
+                # Store positions for xticks
+                xticks_pos.extend(positions)
+                xticks_labels.extend(sub_data['contexts'])
+                
+                # Add substitution type label
+                mid_pos = x_pos + len(sub_data['contexts'])/2 - 0.5
+                plt.text(mid_pos, -1, sub_type, 
+                        ha='center', va='top', 
+                        fontsize=12, fontweight='bold')
+                
+                x_pos += len(sub_data['contexts'])
+                
+                # Add separator
+                if sub_type != list(data.keys())[-1]:
+                    plt.axvline(x_pos - 0.2, color='gray', linestyle='--', alpha=0.3)
+
+            # Customize plot
+            plt.xticks(xticks_pos, xticks_labels, rotation=45, ha='right', fontsize=8)
+            plt.ylabel('% of Base Substitutions', fontsize=12)
+            plt.title('Mutation Signature Profile', fontsize=14, pad=20)
+            
+            # Add grid and adjust layout
             plt.grid(axis='y', linestyle='--', alpha=0.3)
+            plt.gca().spines['top'].set_visible(False)
+            plt.gca().spines['right'].set_visible(False)
+            
+            # Add mean line for each substitution type
+            for sub_type, sub_data in data.items():
+                mean_val = np.mean(sub_data['percentages'])
+                start_pos = xticks_pos[xticks_labels.index(sub_data['contexts'][0])]
+                end_pos = xticks_pos[xticks_labels.index(sub_data['contexts'][-1])]
+                plt.hlines(mean_val, start_pos - 0.4, end_pos + 0.4, 
+                        colors='black', linestyles='dashed', linewidth=1)
+                plt.text(end_pos + 0.5, mean_val, f'{mean_val:.1f}%', 
+                        va='center', fontsize=8)
+
+            # Add legend explaining the plot
+            legend_text = (
+                'Bar: Individual trinucleotide context frequency\n'
+                'Dashed line: Mean frequency per substitution type\n'
+                'Substitution types shown below contexts'
+            )
+            plt.figtext(0.99, 0.98, legend_text, 
+                    ha='right', va='top', 
+                    fontsize=8, 
+                    bbox=dict(facecolor='white', edgecolor='none', alpha=0.8))
+
             plt.tight_layout()
             
-            plt.savefig(output_file, dpi=300, bbox_inches='tight')
-            plt.close()
+            # Adjust bottom margin for substitution type labels
+            plt.subplots_adjust(bottom=0.15)
             
+            # Save as PNG
+            plt.savefig(png_output, dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+                
         except Exception as e:
-            self.logger.error(f"Error plotting mutation signature: {str(e)}")
-
+            self.logger.error(f"Error plotting mutation signature: {str(e)}")   
+            
     def plot_summary_dashboard(self, df: pd.DataFrame, analysis_results: Dict, output_file: str):
-        """Create summary dashboard with multiple plots"""
+        """Create enhanced summary dashboard with multiple plots"""
         try:
-            fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+            fig = plt.figure(figsize=(15, 12), dpi=300)
+            gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.3)
             
             # Plot 1: Variant Type Distribution
+            ax1 = fig.add_subplot(gs[0, 0])
             variant_counts = df['Variant_Type'].value_counts()
-            sns.barplot(data=pd.DataFrame({'count': variant_counts}), 
-                       y=variant_counts.index, x='count', ax=axes[0, 0])
-            axes[0, 0].set_title('Variant Type Distribution')
+            df_counts = pd.DataFrame({'Variant_Type': variant_counts.index, 'count': variant_counts.values})
+            sns.barplot(data=df_counts, x='count', y='Variant_Type', 
+                       hue='Variant_Type', palette=self.colors[:len(variant_counts)],
+                       legend=False, ax=ax1)
+            ax1.set_title('Variant Type Distribution', pad=10, fontsize=12, fontweight='bold')
+            self._setup_figure_style(fig, ax1)
             
             # Plot 2: Variant Classification
+            ax2 = fig.add_subplot(gs[0, 1])
             if 'Variant_Classification' in df.columns:
                 class_counts = df['Variant_Classification'].value_counts()
-                sns.barplot(data=pd.DataFrame({'count': class_counts}),
-                          y=class_counts.index, x='count', ax=axes[0, 1])
-                axes[0, 1].set_title('Variant Classification')
+                df_class = pd.DataFrame({'Classification': class_counts.index, 'count': class_counts.values})
+                sns.barplot(data=df_class, x='count', y='Classification',
+                          hue='Classification', 
+                          palette=sns.color_palette("husl", len(class_counts)),
+                          legend=False, ax=ax2)
+                ax2.set_title('Variant Classification', pad=10, fontsize=12, fontweight='bold')
+            self._setup_figure_style(fig, ax2)
             
             # Plot 3: Top Mutated Genes
+            ax3 = fig.add_subplot(gs[1, 0])
             gene_counts = df['Hugo_Symbol'].value_counts().head(10)
-            sns.barplot(data=pd.DataFrame({'count': gene_counts}),
-                       y=gene_counts.index, x='count', ax=axes[1, 0])
-            axes[1, 0].set_title('Top 10 Mutated Genes')
+            df_genes = pd.DataFrame({'Gene': gene_counts.index, 'count': gene_counts.values})
+            sns.barplot(data=df_genes, x='count', y='Gene',
+                       hue='Gene', palette=sns.color_palette("viridis", len(gene_counts)),
+                       legend=False, ax=ax3)
+            ax3.set_title('Top 10 Mutated Genes', pad=10, fontsize=12, fontweight='bold')
+            self._setup_figure_style(fig, ax3)
             
             # Plot 4: Chromosome Distribution
+            ax4 = fig.add_subplot(gs[1, 1])
             chrom_counts = df['Chromosome'].value_counts()
-            sns.barplot(data=pd.DataFrame({'count': chrom_counts}),
-                       y=chrom_counts.index, x='count', ax=axes[1, 1])
-            axes[1, 1].set_title('Variants by Chromosome')
+            df_chrom = pd.DataFrame({'Chromosome': chrom_counts.index, 'count': chrom_counts.values})
+            sns.barplot(data=df_chrom, x='count', y='Chromosome',
+                       hue='Chromosome', palette=sns.color_palette("mako", len(chrom_counts)),
+                       legend=False, ax=ax4)
+            ax4.set_title('Variants by Chromosome', pad=10, fontsize=12, fontweight='bold')
+            self._setup_figure_style(fig, ax4)
             
-            plt.tight_layout()
-            plt.savefig(output_file, dpi=300, bbox_inches='tight')
-            plt.close()
+            plt.savefig(self._convert_to_png(output_file), dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close(fig)
             
         except Exception as e:
             self.logger.error(f"Error creating summary dashboard: {str(e)}")
 
     def plot_comparison_summary(self, comparison_results: Dict, name1: str, name2: str, output_file: str):
-        """Plot comparison summary with improved styling"""
+        """Plot enhanced comparison summary"""
         try:
-            # Validate required data
-            if not all(key in comparison_results for key in ['shared_variants', 'gene_comparison']):
-                self.logger.error("Missing required data in comparison results")
-                return
-
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+            # Close any existing figures
+            plt.close('all')
             
-            # Color palette
-            colors = ['#2ecc71', '#3498db', '#9b59b6']  # Professional color scheme
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7), dpi=300)
+            fig.patch.set_facecolor('white')
+            
+            colors = ['#2ecc71', '#3498db', '#9b59b6']
             
             # Plot 1: Variant Distribution
             variant_data = {
@@ -436,14 +572,14 @@ class MAFVisualizer:
                 colors=colors,
                 autopct='%1.1f%%',
                 pctdistance=0.85,
-                explode=(0.05, 0, 0)  # Slightly explode the shared slice
+                explode=(0.05, 0, 0),
+                shadow=True
             )
             
-            # Enhance text properties
             plt.setp(autotexts, size=9, weight="bold")
             plt.setp(texts, size=10)
             ax1.set_title(f'Variant Distribution\n{name1} vs {name2}', 
-                        pad=20, size=12, weight='bold')
+                         pad=20, size=12, weight='bold')
             
             # Plot 2: Gene Comparison
             categories = [f'Shared\nGenes', f'Unique to\n{name1}', f'Unique to\n{name2}']
@@ -455,56 +591,63 @@ class MAFVisualizer:
             
             bars = ax2.bar(categories, values, color=colors)
             ax2.set_title('Gene Distribution Comparison', 
-                        pad=20, size=12, weight='bold')
+                         pad=20, size=12, weight='bold')
             ax2.set_ylabel('Number of Genes', size=10)
             
-            # Add value labels on bars
+            # Enhanced bar labels
             for bar in bars:
                 height = bar.get_height()
                 ax2.text(bar.get_x() + bar.get_width()/2., height,
                         f'{int(height):,}',
-                        ha='center', va='bottom', size=10)
+                        ha='center', va='bottom', size=10,
+                        bbox=dict(facecolor='white', alpha=0.8, edgecolor='none'))
             
-            # Styling
             ax2.spines['top'].set_visible(False)
             ax2.spines['right'].set_visible(False)
             ax2.tick_params(labelsize=9)
+            ax2.grid(axis='y', linestyle='--', alpha=0.3)
             
             plt.tight_layout()
-            plt.savefig(output_file, dpi=300, bbox_inches='tight')
-            plt.close()
+            plt.savefig(self._convert_to_png(output_file), dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close(fig)
             
         except Exception as e:
             self.logger.error(f"Error plotting comparison summary: {str(e)}")
 
     def plot_variant_distribution(self, df: pd.DataFrame, output_file: str):
-        """Plot variant type distribution with improved styling"""
-        plt.figure(figsize=(10, 6))
-        
-        # Use a more appealing color palette
-        colors = ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6']
-        
-        variant_counts = df['Variant_Type'].value_counts()
-        bars = plt.bar(variant_counts.index, variant_counts.values, color=colors)
-        
-        # Add value labels
-        for bar in bars:
-            height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{int(height):,}',
-                    ha='center', va='bottom')
-        
-        plt.title('Variant Type Distribution', pad=20, size=12, weight='bold')
-        plt.ylabel('Number of Variants')
-        plt.xticks(rotation=45)
-        
-        # Remove top and right spines
-        plt.gca().spines['top'].set_visible(False)
-        plt.gca().spines['right'].set_visible(False)
-        
-        plt.tight_layout()
-        plt.savefig(output_file, dpi=300, bbox_inches='tight')
-        plt.close()
+        """Plot enhanced variant type distribution"""
+        try:
+            plt.close('all')  # Close any existing figures
+            
+            fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
+            fig.patch.set_facecolor('white')
+            ax.set_facecolor('#f8f9fa')
+            
+            variant_counts = df['Variant_Type'].value_counts()
+            df_variants = pd.DataFrame({'Variant_Type': variant_counts.index, 'count': variant_counts.values})
+            
+            # Use seaborn with proper hue parameter
+            sns.barplot(data=df_variants, x='Variant_Type', y='count',
+                       hue='Variant_Type', palette=self.colors[:len(variant_counts)],
+                       legend=False, ax=ax)
+            
+            # Add value labels
+            for i, v in enumerate(variant_counts.values):
+                ax.text(i, v, str(v), ha='center', va='bottom')
+            
+            ax.set_title('Variant Type Distribution', pad=20, size=12, weight='bold')
+            ax.set_ylabel('Number of Variants', size=10)
+            ax.set_xlabel('Variant Type', size=10)
+            plt.xticks(rotation=45)
+            
+            self._setup_figure_style(fig, ax)
+            
+            plt.tight_layout()
+            plt.savefig(self._convert_to_png(output_file), dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close(fig)
+            
+        except Exception as e:
+            self.logger.error(f"Error plotting variant distribution: {str(e)}")
 
 class MAFAnalysisPipeline:
     """Main analysis pipeline integrating all components"""
@@ -576,11 +719,11 @@ class MAFAnalysisPipeline:
             }
             
             # Generate visualizations
-            if mutation_signature:
-                self.visualizer.plot_mutation_signature(
-                    mutation_signature,
-                    self.viz_dir / f"{sample_name}_mutation_signature.pdf"
-                )
+            # if mutation_signature:
+            #     self.visualizer.plot_mutation_signature(
+            #         mutation_signature,
+            #         self.viz_dir / f"{sample_name}_mutation_signature.pdf"
+            #     )
             
             self.visualizer.plot_summary_dashboard(
                 df, analysis_results,
