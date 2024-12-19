@@ -740,8 +740,8 @@ def main():
         analysis_data = generator.analyze_processed_data(processed_dir)
         
         # Process each sample
-        # samples = ["MMCID-26B", "MMCID-30B"]
-        samples = ["TCMK1-14B", "TMCK1-23B"]
+        samples = ["MMCID-26B", "MMCID-30B"]
+        # samples = ["TCMK1-14B", "TMCK1-23B"]
         
         for sample_name in samples:
             # Load processed data
