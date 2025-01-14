@@ -94,3 +94,30 @@ The required `.json` and `.csv` files will be duplicated due to sensitivity and 
 ```
 
 Tweaking the formatting of the report can be done within the `ClinicalReportGenerator` class in the `scripts/process-clinical-report.py` script. 
+
+## Classes and Methods
+
+### `ClinicalReportGenerator`
+
+- `create_variant_table(self, df: pd.DataFrame, variant_type: str) -> Table`
+  - Create an enhanced table for variants with modern styling.
+
+- `create_summary_section(self, analysis_data: dict) -> list`
+  - Create summary section with modern styling.
+
+### `GeneVisualizer`
+
+- Class for generating gene-specific visualizations.
+
+## Dependencies
+
+- pandas
+- json
+- shutil
+- pathlib
+- logging
+- datetime
+- matplotlib
+- seaborn
+- reportlab
+- PyPDF2
