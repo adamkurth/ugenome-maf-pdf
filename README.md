@@ -14,9 +14,9 @@ project_root/
 
 ## `scripts/`
 
-1. `process-maf-data.py` - Process MAF files and generate a summary report.
+1. `process-maf-data.py` - Process MAF files and generate .json files of the genetic analysis.
    
-2. `process-clinical-report.py` - Process clinical report and generate a summary report.
+2. `process-clinical-report.py` - Process clinical report and generate a summary report and visualizations.
 
 ```bash
 # Step 1: Process MAF files
@@ -28,35 +28,62 @@ python scripts/generate_clinical_report.py
 
 ### `process-maf-data.py`
 
-Place this script in the root of the repo. 
+Please run this script from either the project root, use `scripts/process-maf-data.py` in the command-line or from within `scripts/` directory.
 
-Ensure `data/results` directory contains: (a) `complete_analysis.json` and (b) `processed_data/*.csv` files.
+The output of this script will be in `data/results/processed_data`, and will contain: (a) `**_analysis.json` files and (b) all `processed_data/*.csv` files.
 
-Use the script: 
+To use the script: 
 
 ```bash
 > python scripts/process-maf-data.py
-
-2024-11-20 10:28:44,493 - INFO - Analysis complete. Processed 4 MAF files.
-2024-11-20 10:28:44,493 - INFO - Analysis Summary:
-2024-11-20 10:28:44,493 - INFO - MMCID-26B: 535 variants processed
-2024-11-20 10:28:44,493 - INFO - MMCID-30B: 275 variants processed
-2024-11-20 10:28:44,493 - INFO - TCMK1-14B: 327 variants processed
-2024-11-20 10:28:44,493 - INFO - TMCK1-23B: 322 variants processed
+2025-01-14 11:55:36,756 - INFO - Processing MMCID-26B
+2025-01-14 11:55:37,978 - INFO - Processing MMCID-30B
+2025-01-14 11:55:38,683 - INFO - Processing TCMK1-14B
+2025-01-14 11:55:39,364 - INFO - Processing TMCK1-23B
+2025-01-14 11:55:43,944 - INFO - 
+Analysis Summary:
+2025-01-14 11:55:43,944 - INFO - 
+MMCID-26B:
+2025-01-14 11:55:43,944 - INFO -   Total variants: 535
+2025-01-14 11:55:43,944 - INFO -   Variant types: 5
+2025-01-14 11:55:43,944 - INFO -   Mean VAF: 0.164
+2025-01-14 11:55:43,944 - INFO -   Total genes affected: 438
+# ...
 ```
 
 ```bash
 # Ensure your data structure is:
 data/
   results/
-    complete_analysis.json
     processed_data/
-      sample_name_variant_type.csv
+      samplename_analysis.json
+      samplename_complete.csv
+      samplename_del.csv
+      samplename_dnp.csv
+      samplename_ins.csv
+      samplename_snp.csv
+      samplename_tnp.csv
       ...
+```
+The file structure here is important for the `process-clincal-report.py` script to run properly. All of the `.csv` files are from the main `.json` file. If you wish to change anything about the data processing, please change the first script `process-maf-data.py` first before changing the clincal report script. It's important to maintain the structure within the main `.json` file.
+
+### `process-clinical-report.py`
+
+Within the `data/results/reports` directory, the script will generate a summary report and visualizations for each sample. The output will be in the `data/results/reports` directory.
+
+The required `.json` and `.csv` files will be duplicated due to sensitivity and robustness for code changes and comparisons. This will be locatedd within the `data/results/reports/data` directory.
 
 # Run the script
-python generate_clinical_report.py
 
-# Check the output in:
-data/results/reports/
+```bash
+> python scripts/process-clinical-report.py
+ 2025-01-14 12:07:23,846 - INFO - Loading complete data from /Users/adamkurth/Documents/vscode/research/ugenome/ugenome-maf-pdf/data/results/processed_data/MMCID-26B_complete.csv
+2025-01-14 12:07:24,078 - WARNING - Visualization directory not found at: data/results/visualizations
+2025-01-14 12:07:24,084 - INFO - Generated clinical report for MMCID-26B
+2025-01-14 12:07:24,084 - INFO - Loading complete data from /Users/adamkurth/Documents/vscode/research/ugenome/ugenome-maf-pdf/data/results/processed_data/MMCID-30B_complete.csv
+2025-01-14 12:07:24,313 - WARNING - Visualization directory not found at: data/results/visualizations
+2025-01-14 12:07:24,318 - INFO - Generated clinical report for MMCID-30B
+2025-01-14 12:07:24,318 - INFO - Report generation complete. Data files copied to reports/data/
 ```
+
+Tweaking the formatting of the report can be done within the `ClinicalReportGenerator` class in the `scripts/process-clinical-report.py` script. 
