@@ -1,6 +1,13 @@
 # ugenome-maf-pdf
 
+*All code is written by Adam Kurth (ASU) as a part of a UGenome AI internship.*
+
+This project is a simple demonstration of how to process and analyze genomic data for clinical report generation using MAF files. The project is divided into two scripts: `process-maf-data.py` and `generate-clinical-report.py`. The first script processes MAF files and generates a JSON file of the genetic analysis. The second script processes the clinical report and generates a summary report and visualizations.
+
+## Directory Structure
+
 Directory structure for processing and analyzing genomic data for a clinical report generation.
+
 
 ```bash 
 project_root/
